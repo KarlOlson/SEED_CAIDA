@@ -1,0 +1,11 @@
+version: "3.4"
+services:
+    test:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: karlolson1/seedog:v1
+        
+#       image: handsonsecurity/seedemu-router
+
+
