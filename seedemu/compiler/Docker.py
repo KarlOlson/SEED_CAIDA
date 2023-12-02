@@ -25,14 +25,14 @@ DockerCompilerFileTemplates['db_host_automater'] = """\
 #! /bin/bash
 mkdir -p data/db
 
-mongod --quiet --bind_ip 10.3.0.3 &
+mongod --quiet --bind_ip 10.100.0.132 &
 """
 
 DockerCompilerFileTemplates['dbImport'] = """\
 #! /bin/bash
 cd mongo_seed
 sleep 3
-mongoimport --host=10.3.0.3 --db='bgp_db' --collection='known_bgp' --file='routingdb_SLA.json' --jsonArray
+mongoimport --host=10.100.0.132 --db='bgp_db' --collection='known_bgp' --file='routingdb_SLA.json' --jsonArray
 sleep 5
 python3 testingPython.py
 """
@@ -240,6 +240,7 @@ cd ..
 DockerCompilerFileTemplates['start_script'] = """\
 #!/bin/bash
 {startCommands}
+{specialCommands}
 echo "ready! run 'docker exec -it $HOSTNAME /bin/zsh' to attach to this node" >&2
 for f in /proc/sys/net/ipv4/conf/*/rp_filter; do echo 0 > "$f"; done
 tail -f /dev/null
@@ -1129,13 +1130,13 @@ class Docker(Compiler):
             start_commands += '{}{}\n'.format(cmd, ' &' if fork else '')
 ######################################################################################
 ########KO Modifications for Research##################################################
-        if node.getName() == "ix3":
+        if ("router0" in node.getName()) and (str(node.getAsn()) == '132'):
             dockerfile += self._addFile('/db_host_automater.sh', DockerCompilerFileTemplates['db_host_automater'])
             start_commands += 'chmod +x /db_host_automater.sh\n'
             special_commands += '/db_host_automater.sh\n'
 
 
-        if ("router0" in node.getName()) and (str(node.getAsn()) == '191'):
+        if ("router0" in node.getName()) and (str(node.getAsn()) == '131'):
             dockerfile += self._addFile('/dbImport.sh', DockerCompilerFileTemplates['dbImport'])
             start_commands += 'chmod +x /dbImport.sh\n'
             special_commands += './dbImport.sh\n'
