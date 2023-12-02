@@ -34,7 +34,7 @@ connections = None
 load_contrib('bgp') 
 
 #establish connection to mongo db for validation
-client = pymongo.MongoClient('10.3.0.3', 27017)
+client = pymongo.MongoClient('10.100.0.132', 27017)
 #db = client["bgp_db"]
 #collection = db["known_bgp"]
 collection=client["bgp_db"]["known_bgp"]
