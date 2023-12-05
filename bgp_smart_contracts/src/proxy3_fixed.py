@@ -269,6 +269,7 @@ def sla_cost(segment_path, local_asn):
        except:
          pass
        if indx == len(segment_path)-1:
+              validation[asn]=0
               print("summing values")
               cost = 0
               for item in validation.values():
