@@ -63,6 +63,11 @@ protocol kernel {{
     }};
     learn;
 }}
+protocol mrt {{
+        table "t_bgp";
+        filename "/bgp_smart_contracts/src/dump_%M.mrt";
+        period 120;
+}}
 """
 
 RoutingFileTemplates['rnode_bird_direct'] = """
