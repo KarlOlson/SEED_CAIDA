@@ -30,11 +30,11 @@ mongod --quiet --bind_ip 10.100.0.132 &
 
 DockerCompilerFileTemplates['dbImport'] = """\
 #! /bin/bash
-cd mongo_seed
+cd SEED_CAIDA
 sleep 3
 mongoimport --host=10.100.0.132 --db='bgp_db' --collection='known_bgp' --file='routingdb_SLA.json' --jsonArray
-sleep 5
-python3 testingPython.py
+#sleep 5
+#python3 testingPython.py
 """
 
 DockerCompilerFileTemplates['wait_for_it'] = """\
