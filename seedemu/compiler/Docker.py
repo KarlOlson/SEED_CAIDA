@@ -227,7 +227,7 @@ DockerCompilerFileTemplates['proxy'] = """\
 #!/bin/bash
 cd /bgp_smart_contracts/src/ 
 mkdir -p logs
-./wait_for_it.sh 10.3.0.3:27017 -t 10 -- python3 -u proxy.py {} > logs/log.log &
+./wait_for_it.sh 10.100.0.132:27017 -t 20 -- python3 -u proxy3.py {} > logs/log.log &
 #tail -f logs/log.log
 
 mkdir -p pcaps
