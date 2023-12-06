@@ -360,7 +360,7 @@ def path_validate(segment_path):
           else:
               print("The percentage of path validated is: ", countOf(validation.values(), True)/len(validation))
               percent=countOf(validation.values(), True)/len(validation)
-              validaiton[asn]='null'
+              validation[asn]='null'
               path_time+=((time.time_ns() // 1_000_000) - start_time)
               return validation, percent, indx
               
@@ -446,7 +446,7 @@ if __name__=='__main__':
         requests=db.command("serverStatus")["network"]["numRequests"]
         print("Total db requests (local): ",roa_lookups+sla_lookups+path_lookups)
         print("Total duration, seconds (local): ", complete_duration)
-        print("Total local req/s: ", complete_duration/(roa_lookups+sla_lookups+path_lookups)) 
+        print("Total local req/s: ", (roa_lookups+sla_lookups+path_lookups)/complete_duration) 
         print("requests per second to db (global): ", (db.command("serverStatus")["network"]["numRequests"]/(db.command("serverStatus")["globalLock"]["totalTime"]/1000000)))
         print("requests per second since proxy start (global): ", (db.command("serverStatus")["network"]["numRequests"]-svr_req)/((db.command("serverStatus")["globalLock"]["totalTime"]-svr_time)/1000000))
         print("===================================================")
