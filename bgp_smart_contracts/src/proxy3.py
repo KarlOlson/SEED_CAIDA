@@ -60,6 +60,9 @@ db_time=0
 db_packets=0
 db_lookups=0
 
+roa_time=0
+roa_lookups=0
+
 proxy_time1=0
 proxy_packets1=0
 
@@ -69,6 +72,11 @@ proxy_packets2=0
 total_time=0
 total_packets=0
 
+path_time=0
+path_lookups=0
+
+sla_time=0
+sla_lookups=0
 
 
 #Packet processing function to query db info. Looks for BGPUpdate messages containing NLRI advertisements.
@@ -76,7 +84,7 @@ def pkt_in(packet):
 
 
     #Start counter metrics
-    global  db_time, db_packets, proxy_time1, proxy_packets1, proxy_time2, proxy_packets2, db_lookups
+    global   db_time, db_packets, db_lookups, proxy_time1, proxy_packets1, proxy_time2, proxy_packets2
         
     #Start counters for proxy handling time
     start_time1 = time.time_ns() // 1_000_000
@@ -124,6 +132,7 @@ def pkt_in(packet):
                         # Get the next hop ASN from the BGP packet
                         # next_hop_asn = update.get_next_hop_asn()
                         # next_hop_asn = m_pkt.get_next_hop_asn()
+                        
                         for count, nlri in enumerate(update.nlri()):
                             segment = update.get_segment(nlri)
                             print("nlri count: " + str(count))
@@ -131,60 +140,65 @@ def pkt_in(packet):
                             print ("Advertised Segment: " + str(segment))
                             print ("validating advertisement for ASN: " + str(update.get_origin_asn()))
                             print ("ASN_Path is: ", update.asn_segment)
+                            start_time3 = time.time_ns() // 1_000_000
                             #Conduct call to DB to validate prefix/ASN ownership
-                            #validationResult, duration2 = db_validate(segment)
-                            #db_time+=duration2
+                            validationResult= db_validate(segment)
+                            update.asn_segment.insert(0,local_asn)
                             #uncomment next line for path valudation calculations
-                            #validation_dict,perc,plen=path_validate(update.asn_segment, local_asn)
-                            valication_dict, perc, plen=sla_cost(update.asn_segment, local_asn)
-
-                            print("validation result is: ", validation_dict)
-                            new_csv=[]
-                            with open('path.csv', 'a', newline='') as csvfile:
-                               filewriter = csv.writer(csvfile, delimiter='\t')
-                               filewriter.writerow([str(segment[0]), str(segment[1]), str(segment[2]), str(validation_dict), perc, plen])
-                            print("entering comparor")
+                            path_validation_dict,path_perc,path_plen=path_validate(update.asn_segment)
+                            sla_validation_dict, sla_perc, sla_plen=sla_cost(update.asn_segment)
+                            end_time3=time.time_ns() // 1_000_000 - start_time3
+                            db_time+=end_time3
+                            print("===========================")
+                            print("path validation result is: ", path_validation_dict)
+                            print("sla cost result is: ", sla_validation_dict)
+                            print("roa validation result is: ", validationResult)
+                            #new_csv=[]
+                            #with open('path.csv', 'a', newline='') as csvfile:
+                            #   filewriter = csv.writer(csvfile, delimiter='\t')
+                            #   filewriter.writerow([str(segment[0]), str(segment[1]), str(segment[2]), str(validation_dict), perc, plen])
+                            #print("entering comparor")
                                #reader = csv.reader(csvfile)
                                #next(reader, None) # discard the header
-                            with open('single.csv','r', newline='' ) as singlecsv:
-                               blank_csv = csv.reader(singlecsv, delimiter='\t')
-                               print(blank_csv)
-                               print('should have printed object, entering rows')
-                               for row in blank_csv:
-                                  print(row)
-                                  print("row x")
-                                  new_csv.append(row)
-                               print("no rows if none above")
-                            print("entering single checker")
-                            with open('single.csv', 'w',  newline='') as singlecsv:
-                               checker=[str(segment[0]), str(segment[1]), str(segment[2]), validation_dict, perc, plen]
-                               print("checker")
-                               print(checker)
-                               countrow = 0
-                               if len(new_csv)>0:
-                                 for row in new_csv:
-                                   print("checking rows in blank_csv")
-                                   print(row)
-                                   if (str(row[0]) == str(checker[0]) and float(row[4]) <= float(perc)):
-                                      print("using if for",checker[0])
-                                      filewriter2 = csv.writer(singlecsv, delimiter='\t')
-                                      filewriter2.writerow([str(checker[0]), str(checker[1]), str(checker[2]), str(checker[3]), checker[4], checker[5]])
-                                      count+=1
-                                   elif (str(row[0]) == str(checker[0]) and float(row[4]) > float(perc)):
-                                      count+=1
-                                   else:
-                                      print("using else for",row[0])
-                                      filewriter2 = csv.writer(singlecsv, delimiter='\t' )
-                                      filewriter2.writerow([str(row[0]), str(row[1]), str(row[2]), str(row[3]), row[4], row[5]])
-                                 if count >0:
-                                   pass
-                                 else:
-                                   filewriter2 = csv.writer(singlecsv, delimiter='\t')
-                                   filewriter2.writerow([str(checker[0]), str(checker[1]), str(checker[2]), str(checker[3]), checker[4], checker[5]])
-                               else:
-                                 print("first entry, using checker data")
-                                 filewriter2 = csv.writer(singlecsv, delimiter='\t' )
-                                 filewriter2.writerow([str(segment[0]), str(segment[1]), str(segment[2]), validation_dict, perc, plen])
+                            #with open('single.csv','r', newline='' ) as singlecsv:
+                             #  blank_csv = csv.reader(singlecsv, delimiter='\t')
+                             #  print(blank_csv)
+                             #  print('should have printed object, entering rows')
+                             #  for row in blank_csv:
+                             #     print(row)
+                             #     print("row x")
+                             #     new_csv.append(row)
+                             #  print("no rows if none above")
+                            #print("entering single checker")
+                            #with open('single.csv', 'w',  newline='') as singlecsv:
+                             #  checker=[str(segment[0]), str(segment[1]), str(segment[2]), validation_dict, perc, plen]
+                             #  print("checker")
+                             #  print(checker)
+                             #  countrow = 0
+                             #  if len(new_csv)>0:
+                             #    for row in new_csv:
+                             #      print("checking rows in blank_csv")
+                             #      print(row)
+                             #      if (str(row[0]) == str(checker[0]) and float(row[4]) <= float(perc)):
+                             #         print("using if for",checker[0])
+                             #         filewriter2 = csv.writer(singlecsv, delimiter='\t')
+                             #         filewriter2.writerow([str(checker[0]), str(checker[1]), str(checker[2]), str(checker[3]), checker[4], checker[5]])
+                              #        count+=1
+                              #     elif (str(row[0]) == str(checker[0]) and float(row[4]) > float(perc)):
+                              #        count+=1
+                              #     else:
+                              #        print("using else for",row[0])
+                              #        filewriter2 = csv.writer(singlecsv, delimiter='\t' )
+                              #        filewriter2.writerow([str(row[0]), str(row[1]), str(row[2]), str(row[3]), row[4], row[5]])
+                              #   if count >0:
+                              #     pass
+                              #   else:
+                              #     filewriter2 = csv.writer(singlecsv, delimiter='\t')
+                              #     filewriter2.writerow([str(checker[0]), str(checker[1]), str(checker[2]), str(checker[3]), checker[4], checker[5]])
+                              # else:
+                              #   print("first entry, using checker data")
+                              #   filewriter2 = csv.writer(singlecsv, delimiter='\t' )
+                              #   filewriter2.writerow([str(segment[0]), str(segment[1]), str(segment[2]), validation_dict, perc, plen])
 
                             #if validationResult == validatePrefixResult.prefixValid:
                             #print("NLRI " + str(count) + " passed authorization...checking next ASN")
@@ -226,20 +240,28 @@ def pkt_in(packet):
                     print("packet not modified. accepting as is")
                     
             #Performance metrics for full proxy/db action
-            duration1=(time.time_ns() // 1_000_000) - start_time1
-            proxy_time1+=duration1
+            proxy_time1+=(time.time_ns() // 1_000_000) - start_time1
             proxy_packets1+=1
-            print ("Full proxy/db  duration was: "+str(duration1)+" ms.")   
-            print ("AVG db lookup duration was:" +str(db_time/db_lookups)+" ms. for "+str(db_lookups)+" lookups")
-            print("Total db time was: "+str(db_time/db_packets))
+            print ("Full proxy/db  duration was: "+str((time.time_ns() // 1_000_000) - start_time1)+" ms.")
+            #print("roa validation was: "+str( roa_time)+"ms")
+            #print("sla validation was: "+str( sla_time)+"ms")
+            #print("path validation was: "+str(path_time)+"ms")
+            print("===================================")   
+            #print ("AVG db lookup duration was:" +str(db_time/db_lookups)+" ms. for "+str(db_lookups)+" lookups")
+            #print("Total db time was: "+str(end_time3))
             packet.accept()
 
         except IndexError as ie:
             print("index error. diff type of bgp announcement. accept packet. error: " + repr(ie))
+            proxy_time2+=(time.time_ns() // 1_000_000) - start_time1
+            proxy_packets2+=1
             packet.accept()
             print("accepted other bgp type packet")
+
         except Exception as e: 
             print("bgp msg other: " + repr(e))
+            proxy_time2+=(time.time_ns() // 1_000_000) - start_time1
+            proxy_packets2+=1
             packet.accept()
     else:
         print("not a bgp update packet. are headers modified? ")
@@ -250,14 +272,15 @@ def pkt_in(packet):
             packet.set_payload(m_pkt.bytes())
         print("accept non bgp packet")
         #Full proxy processing time (for non-lookup packets)
-        duration3=(time.time_ns() // 1_000_000) - start_time1
-        proxy_time2+=duration3
+        proxy_time2+=(time.time_ns() // 1_000_000) - start_time1
         proxy_packets2 += 1
-        print ("proxy only duration was: "+str(duration3)+" ms.")
+        print ("proxy only duration was: "+str((time.time_ns() // 1_000_000) - start_time1)+" ms.")
         packet.accept()
 
-def sla_cost(segment_path, local_asn):
-   segment_path.insert(0,local_asn)
+def sla_cost(segment_path):
+   global sla_lookups, sla_time
+   start_time = time.time_ns() // 1_000_000
+   #segment_path.insert(0,local_asn)
    validation={}
    for indx, asn in enumerate(segment_path):
        try:
@@ -266,16 +289,22 @@ def sla_cost(segment_path, local_asn):
          pass
        if indx == len(segment_path)-1:
               validation[asn]=0
-              cost=sum(validaiton.values())
+              cost=0
+              for item in validation.values():
+                 cost+=float(item)
+              #cost=sum(validation.values())
               print("The cost of path is: ", cost)
               print("the segment costs are", validation)
               #duration=(time.time_ns() // 1_000_000) - start_time
+              sla_time+=(time.time_ns() // 1_000_000) - start_time
+              #db_lookup_sum+=duration
               return validation, cost, indx
 
        else:
           ret2=collection.find_one({'labels.asn':str(asn)},{'labels.cost':1})
           print(ret2)
           ret3=ret2['labels']['cost']
+          sla_lookups+=1
 
           print ("ret3 is: ",ret3)
           if str(segment_path[indx+1]) in ret3:
@@ -311,13 +340,13 @@ def remove_invalid_nlri_from_packet(m_pkt, nlri, update):
         print("ERROR: packet modification failed")
 
 
-def path_validate(segment_path, local_asn):
+def path_validate(segment_path):
 
     #set global counters for performanc metrics
-    #global  path_validate_sum, path_lookup_counter
-    #start_time = time.time_ns() // 1_000_000
+    global  path_lookups, path_time
+    start_time = time.time_ns() // 1_000_000
     #print("Path start time:"+str(start_time))
-    segment_path.insert(0,local_asn)
+    #segment_path.insert(0,local_asn)
     print ("Validating segment: ", segment_path)
     validation={}
     for indx, asn in enumerate(segment_path):
@@ -325,14 +354,19 @@ def path_validate(segment_path, local_asn):
           if all(value == True for value in validation.values()):
               print("Path is fully verified",validation)
               percent=100
+              validation[asn]='null'
+              path_time+=((time.time_ns() // 1_000_000) - start_time)
               return validation, percent, indx 
           else:
               print("The percentage of path validated is: ", countOf(validation.values(), True)/len(validation))
               percent=countOf(validation.values(), True)/len(validation)
+              validaiton[asn]='null'
+              path_time+=((time.time_ns() // 1_000_000) - start_time)
               return validation, percent, indx
               
        elif collection.count_documents({'labels.asn': str(asn), 'labels.neighbors': {'$in': [segment_path[indx+1]]}}) == 1:
           validation[asn] = True
+          path_lookups+=1
            
        else:
           validation[asn] = False      
@@ -341,7 +375,7 @@ def path_validate(segment_path, local_asn):
 def db_validate(segment):
 
     #set global counters for performanc metrics
-    global  db_lookups
+    global  roa_lookups, roa_time
     start_time = time.time_ns() // 1_000_000
     print("Database start time:"+str(start_time))
     
@@ -379,12 +413,12 @@ def db_validate(segment):
         validationResult=validatePrefixResult.prefixOwnersDoNotMatch
 
     #final db performance metrics
-    duration=(time.time_ns() // 1_000_000) - start_time
+    roa_time+=((time.time_ns() // 1_000_000) - start_time)
     #db_lookup_sum+=duration
-    db_lookups+=1
+    roa_lookups+=1
     
-    print ("db Lookup Duration was: "+str(duration)+" ms.")
-    return validationResult, duration
+    print ("db Lookup Duration was: "+str((time.time_ns() // 1_000_000) - start_time)+" ms.")
+    return validationResult
 
 
 if __name__=='__main__':
@@ -410,10 +444,11 @@ if __name__=='__main__':
         nfqueue.unbind()
         complete_duration=((time.time_ns() // 1_000_000) - complete_time)/1000
         requests=db.command("serverStatus")["network"]["numRequests"]
-        print("Total db requests: ",requests)
-        print("Total duration: ", complete_duration)
-        print("requests per second to db: ", (db.command("serverStatus")["network"]["numRequests"]/(db.command("serverStatus")["globalLock"]["totalTime"]/1000000)))
-        print("requests per second since proxy start: ", (db.command("serverStatus")["network"]["numRequests"]-svr_req)/(db.command("serverStatus")["globalLock"]["totalTime"]-svr_time/1000000))
+        print("Total db requests (local): ",roa_lookups+sla_lookups+path_lookups)
+        print("Total duration, seconds (local): ", complete_duration)
+        print("Total local req/s: ", complete_duration/(roa_lookups+sla_lookups+path_lookups)) 
+        print("requests per second to db (global): ", (db.command("serverStatus")["network"]["numRequests"]/(db.command("serverStatus")["globalLock"]["totalTime"]/1000000)))
+        print("requests per second since proxy start (global): ", (db.command("serverStatus")["network"]["numRequests"]-svr_req)/((db.command("serverStatus")["globalLock"]["totalTime"]-svr_time)/1000000))
         print("===================================================")
         #print out final performance statistics over full run
         print ("Total Update packets:"+str(proxy_packets1))
@@ -422,11 +457,17 @@ if __name__=='__main__':
         print("non update packets: "+str(proxy_packets2))
         print ("Average Proxy Time (Non-Update Packets): "+str(proxy_time2/proxy_packets2))
         try:
-            print ("Total DB packets:"+str(db_packets))
-            db_avg=db_time/db_packets
-            print("Average DB lookup time (whole NLRI):"+str(db_avg))
-            print("Average NLRI lookup time: "+str(db_time/db_lookups))
-            print("Average Proxy Overhead time: "+str((proxy_time1-db_time)/proxy_packets1))
+            #print ("Total DB packets:"+str(db_packets))
+            #db_avg=db_time/db_packets
+            #print("Average DB lookup time (whole NLRI):"+str(db_avg))
+            #print("Average NLRI lookup time: "+str(db_time/db_lookups))
+            #print("Average Proxy Overhead time: "+str((proxy_time1-db_time)/proxy_packets1))
+            print(" total SLA lookup time: ", sla_time)
+            print(" total path lookup time: ", path_time)
+            print(" total roa lookup time: ", roa_time) 
+            print("SLA Lookups Average Time and Count: "+str(sla_time/sla_lookups)+"ms"+"  Count: "+str(sla_lookups))
+            print("Path Lookups Average Time and Count: "+str(path_time/path_lookups)+"ms"+"  Count: "+str(path_lookups))
+            print("ROA Lookups Average Time and Count: "+str(roa_time/roa_lookups)+"ms"+"  Count: "+str(roa_lookups))
             
         except:
             print("No db packets")
